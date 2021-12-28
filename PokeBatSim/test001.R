@@ -2,84 +2,60 @@ library(tidyverse)
 library(ggplot2)
 library(plotly)
 
-# https://rviews.rstudio.com/2020/07/20/shallow-neural-net-from-scratch-using-r-part-1/
+set.seed(339)
 
 data <- read.csv("data/pokemon.csv")
-# https://github.com/zonination/pokemon-chart/blob/master/chart.csv
 types <- read.csv("data/type_chart.csv")
 
+# This let's us find the values for Pokemon in the second quartile
 plot_ly(y = data$Total, type = "box")
 
-first_set <- data %>% 
+# Get the set of Pokemon in the second quartile minus variations on Pokemon
+fs <- data %>% 
   filter(Total > 330 & Total < 450) %>%
   slice( -(183:185)) %>%
   slice( -(118:119)) 
-fs <- rbind(first_set, data %>% slice(792))
+#  Add a flying type 1 Pokemon as there was none in q2
+fs <- rbind(fs, data %>% slice(792))
 
-team1 <- fs %>% slice(sample(1:185, size=6))
-team2 <- fs %>% slice(sample(1:185, size=6))
+# Get six random Pokemon for each team
+team_user <- fs %>% slice(sample(1:181, size=6))
+team_comp <- fs %>% slice(sample(1:181, size=6))
 
-team1$Name
-team2$Name
+# Determine the faster of the team's two first Pokemon and start the battle
+ifelse (team_user[1,"Speed"] > team_comp[1,"Speed"],
+        start_battle(c("user", "comp"),list(team_user, team_comp)), 
+        start_battle(c("comp", "user"),list(team_comp, team_user)))
 
-sample(0:1,1)
-
-team1_poke <- 1
-team2_poke <- 1
-
-
-while(team1_poke <= 6 && team2_poke <= 6) {
-  if(team1[team1_poke,"Total"] > team1[team2_poke,"Total"]) {
-    print(paste0("team 1 won: ", team1[team1_poke,"Name"]))
-    team1_poke <- team1_poke + 1
-  } else {
-    print(paste0("team 2 won: ", team1[team2_poke,"Name"]))
-    team2_poke <- team2_poke + 1
+# This function will determine the winning team
+start_battle <- function(team_names,team_teams) {
+  winner <- calc_def(1,1)
+  
+  # This function acts as the battle mechanism for each team
+  #  calling itself switching which team it is representing each time
+  calc_def <- function(team1_poke,team2_poke) {
+    # Determine the attack modifier for the attacking Pokemon against the
+    #  defending Pokemon
+    attack_modifier <- types %>% 
+      filter(Attacking == team_teams %>% pluck(1, 1, "Type.1") %>% 
+               `[[`(team1_poke)) %>% 
+      pull(team_teams %>% pluck(2, 1, "Type.1") %>% `[[`(team2_poke))
+    # Calculate the defense remaining for the Pokemon after the attack
+    remaining_def <- team_teams %>% pluck(2, 1, "Defense")  %>% 
+      `[[`(team2_poke) -
+      team_teams %>% pluck(1, 1, "Attack")  %>% 
+      `[[`(team1_poke) * attack_modifier
+    # here, or somewhere, will need to determine counter attack, switch
+    #  to next Pokemon, or team defeated
+    
+    team_names <- replace(team_names, c(1,2), team_names[c(2,1)])
+    team_teams <- list(team_teams[2], team_teams[1])
+    calc_def(team2_poke, team1_poke)
   }
-}
-print(paste0("Match winner: ", ifelse (team1_poke > team2_poke, "Team 1", "Team 2")))
-
-
-
-
-
-
-team2[team2_poke,"Defense"]
-team1[team1_poke,"Attack"]
-
-
-
-poke_battle <- function(poke_a, poke_d) {
-  attack_modifier <- types %>% 
-    filter(Attacking == poke_a[1,3]) %>% pull(poke_d[1,3])
-  return(poke_d[1,"Defense"] - poke_a[1,"Attack"] * attack_modifier)
+  
 }
 
-team_battle <- function(team_a, team_b) {
-  team_a_poke <- 1
-  team_b_poke <- 1
-  if (poke_battle(team_a[team_a_poke,], team_b[team_b_poke,]) > 0) {
-    print("hello")
-  }
-}
-
-ifelse (team1[team1_poke,"Speed"] > team2[team2_poke,"Speed"],
-        poke_battle(team1[team1_poke,], team2[team2_poke,]), 
-        poke_battle(team2[team2_poke,], team1[team1_poke,]))
-
-
-battle_field <- c(1,1,1,team1,team2)
-
-
-battle_field$team1
-
-
-team1[team1_poke,]
-team2[team2_poke,]
-
-
-
-
+                     
 
 
 
