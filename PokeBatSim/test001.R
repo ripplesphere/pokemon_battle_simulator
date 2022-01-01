@@ -18,6 +18,8 @@
 #   filter(Total > 330 & Total < 450) %>%
 #   slice( -(183:185)) %>%
 #   slice( -(118:119)) 
+# fs$Name[fs$Name == "PumpkabooAverage Size"] <- "Pumpkaboo"
+# fs$Name[fs$Name == "WormadamPlantCloak"] <- "Wormadam"
 # fs <- rbind(fs, data %>% slice(792))
 # 
 # team_user <- fs %>% slice(sample(1:181, size=6))
@@ -66,7 +68,29 @@ speed_test()
 # tmp2 <- fs %>% slice(sample(1:181, size=6))
 # 
 
-unique(fs$Type.1)
+tmp2$Type.2[1]
+if(tmp2$Type.2[1] == "") {
+  cat("Hello")
+}
+  
+fs %>% filter(Name == "WormadamPlantCloak")
+
+fs$Name[fs$Name == "WormadamPlantCloak"] <- "Wormadam"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

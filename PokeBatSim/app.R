@@ -8,6 +8,8 @@ fs <- data %>%
   filter(Total > 330 & Total < 450) %>%
   slice( -(183:185)) %>%
   slice( -(118:119))
+fs$Name[fs$Name == "PumpkabooAverage Size"] <- "Pumpkaboo"
+fs$Name[fs$Name == "WormadamPlantCloak"] <- "Wormadam"
 fs <- rbind(fs, data %>% slice(792))
 
 type_1 <- unique(fs$Type.1)
@@ -15,10 +17,13 @@ type_1 <- unique(fs$Type.1)
 team_comp <- fs %>% slice(sample(1:181, size=6))
 
 ui <- fluidPage(
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
+  ),
+  shinyjs::useShinyjs(),
   fluidRow(
     column(4,  
         fluidRow(column(6, 
-
            selectInput("poke1_type", label = "", 
                        choices = c("Type", type_1),
                        selected = 1)
@@ -27,34 +32,247 @@ ui <- fluidPage(
                        choices = c("Select", sort(unique(fs$Name))),
                        selected = 1)
         )),
-        fluidRow(column(12, verbatimTextOutput("poke1_val")))
+        fluidRow(column(12, htmlOutput("poke1_val") %>% 
+                          tagAppendAttributes(class = 'pokemon_stats')))
            
     ),
     column(4,
-           selectInput("poke2_type", label = "", 
+           fluidRow(column(6, 
+                       selectInput("poke2_type", label = "", 
                        choices = c("Type", type_1),
-                       selected = 1),
-           selectInput("pokemon2", label = h3("Select Pokemon"), 
+                       selected = 1)
+           ), column(6,
+                     selectInput("pokemon2", label = "", 
                        choices = c("Select", sort(unique(fs$Name))),
-                       selected = 1),
+                       selected = 1)
+           )),
+           fluidRow(column(12, htmlOutput("poke2_val") %>% 
+                             tagAppendAttributes(class = 'pokemon_stats')))
     ),
     column(4,
-           selectInput("poke3_type", label = "", 
+           fluidRow(column(6, 
+                       selectInput("poke3_type", label = "", 
                        choices = c("Type", type_1),
-                       selected = 1),
-           selectInput("pokemon3", label = h3("Select Pokemon"), 
+                       selected = 1)
+           ), column(6,
+                    selectInput("pokemon3", label = "", 
                        choices = c("Select", sort(unique(fs$Name))),
-                       selected = 1),
+                       selected = 1)
+           )),
+           fluidRow(column(12, htmlOutput("poke3_val") %>% 
+                             tagAppendAttributes(class = 'pokemon_stats')))
     )
-  )
-  
+  ),
+  fluidRow(
+    column(4,  
+           fluidRow(column(6, 
+                           selectInput("poke4_type", label = "", 
+                                       choices = c("Type", type_1),
+                                       selected = 1)
+           ), column(6,
+                     selectInput("pokemon4", label = "", 
+                                 choices = c("Select", sort(unique(fs$Name))),
+                                 selected = 1)
+           )),
+           fluidRow(column(12, htmlOutput("poke4_val") %>% 
+                             tagAppendAttributes(class = 'pokemon_stats')))
+           
+    ),
+    column(4,
+           fluidRow(column(6, 
+                           selectInput("poke5_type", label = "", 
+                                       choices = c("Type", type_1),
+                                       selected = 1)
+           ), column(6,
+                     selectInput("pokemon5", label = "", 
+                                 choices = c("Select", sort(unique(fs$Name))),
+                                 selected = 1)
+           )),
+           fluidRow(column(12, htmlOutput("poke5_val") %>% 
+                             tagAppendAttributes(class = 'pokemon_stats')))
+    ),
+    column(4,
+           fluidRow(column(6, 
+                           selectInput("poke6_type", label = "", 
+                                       choices = c("Type", type_1),
+                                       selected = 1)
+           ), column(6,
+                     selectInput("pokemon6", label = "", 
+                                 choices = c("Select", sort(unique(fs$Name))),
+                                 selected = 1)
+           )),
+           fluidRow(column(12, htmlOutput("poke6_val") %>% 
+                             tagAppendAttributes(class = 'pokemon_stats')))
+    )
+  ),
+  fluidRow(
+    column(2, offset = 10,  
+           actionButton("to_battle", label = "Battle")
+           
+    )),
+    fluidRow(column(6, htmlOutput("value")))
 )
 
-server <- function(input, output) {
+################################################################################
+server <- function(input, output, session) {
+
+  pokemon_list <- function(poke_type) {
+      if (poke_type == "Type") {
+        pokemon <- unique(sort(fs$Name))
+      } else {
+        pokemon <- fs %>%
+          filter(`Type.1` == poke_type) %>%
+          pull(Name) %>% unique() %>% sort()
+      }
+      return(pokemon)
+  }
   
-  output$poke1_val <- renderPrint({ input$pokemon1 })
+  observe({
+    updateSelectInput(session, "pokemon1",
+                      choices = c("Select", pokemon_list(input$poke1_type))
+    )
+  })
+  
+  observe({
+    updateSelectInput(session, "pokemon2",
+                      choices = c("Select", pokemon_list(input$poke2_type))
+    )
+  })
+  
+  observe({
+    updateSelectInput(session, "pokemon3",
+                      choices = c("Select", pokemon_list(input$poke3_type))
+    )
+  })
+  
+  observe({
+    updateSelectInput(session, "pokemon4",
+                      choices = c("Select", pokemon_list(input$poke4_type))
+    )
+  })
+  
+  observe({
+    updateSelectInput(session, "pokemon5",
+                      choices = c("Select", pokemon_list(input$poke5_type))
+    )
+  })
+  
+  observe({
+    updateSelectInput(session, "pokemon6",
+                      choices = c("Select", pokemon_list(input$poke6_type))
+    )
+  })
+  
+  pokemon_output <- function(pokemon_name) {
+    pokemon <- fs %>% filter(Name == pokemon_name)
+      output_str <- paste0("Name: <b>",pokemon$Name,"</b><br>",
+                           "Type:&nbsp&nbsp&nbsp<b>",pokemon$Type.1)
+      if(pokemon$Type.2 != "") {
+        output_str <- paste0(output_str,", ",pokemon$Type.2)
+      }
+      output_str <- paste0(output_str,"</b><br>",
+                           "Total:&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<b>",
+                           pokemon$Total,"</b><br>",
+                           "Attack:&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<b>",
+                           pokemon$Attack,"</b><br>",
+                           "Defense:&nbsp&nbsp&nbsp<b>",
+                           pokemon$Defense,"</b><br>",
+                           "Sp. Atk:&nbsp&nbsp&nbsp&nbsp&nbsp<b>",
+                           pokemon$Sp..Atk,"</b><br>",
+                           "Sp. Def:&nbsp&nbsp&nbsp&nbsp<b>",
+                           pokemon$Sp..Def,"</b><br>",
+                           "Speed:&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<b>",
+                           pokemon$Speed,"</b><br>",
+                           "Generation:&nbsp<b>",pokemon$Generation,"</b><br>")
+      if(pokemon$Legendary == "True") {
+        output_str <- paste0(output_str,"<b>Legendary</b>")
+      }
+      return(output_str)
+  }
+  
+  output$poke1_val <- renderUI({
+    if (input$pokemon1 == "Select") {
+      output_str <- "Select a Pokemon<br><br><br><br><br><br><br><br><br>"
+    } else {
+      output_str <- pokemon_output(input$pokemon1)
+    }
+    HTML(output_str)
+  })
+  
+  output$poke2_val <- renderUI({
+    if (input$pokemon2 == "Select") {
+      output_str <- "Select a Pokemon"
+    } else {
+      output_str <- pokemon_output(input$pokemon2)
+    }
+    HTML(output_str)
+  })
+  
+  output$poke3_val <- renderUI({
+    if (input$pokemon3 == "Select") {
+      output_str <- "Select a Pokemon"
+    } else {
+      output_str <- pokemon_output(input$pokemon3)
+    }
+    HTML(output_str)
+  })
+  
+  output$poke4_val <- renderUI({
+    if (input$pokemon4 == "Select") {
+      output_str <- "Select a Pokemon<br><br><br><br><br><br><br><br><br>"
+    } else {
+      output_str <- pokemon_output(input$pokemon4)
+    }
+    HTML(output_str)
+  })
+  
+  output$poke5_val <- renderUI({
+    if (input$pokemon5 == "Select") {
+      output_str <- "Select a Pokemon"
+    } else {
+      output_str <- pokemon_output(input$pokemon5)
+    }
+    HTML(output_str)
+  })
+  
+  output$poke6_val <- renderUI({
+    if (input$pokemon6 == "Select") {
+      output_str <- "Select a Pokemon"
+    } else {
+      output_str <- pokemon_output(input$pokemon6)
+    }
+    HTML(output_str)
+  })
+  
+  observe({
+       # toggleState("to_battle", condition = input$pokemon6 == 'Select')
+    if (input$pokemon1 == 'Select' || input$pokemon2 == 'Select' ||
+        input$pokemon3 == 'Select' || input$pokemon4 == 'Select' ||
+        input$pokemon5 == 'Select' || input$pokemon6 == 'Select') {
+     shinyjs::disable("to_battle")
+    } else {
+      shinyjs::enable("to_battle")
+    }
+  })
+  
+  output$value <- renderUI({ 
+      input$to_battle
+    })
   
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
+
+
+
+
+
+
+
+
+
+
+
+
