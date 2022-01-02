@@ -14,13 +14,17 @@ fs <- rbind(fs, data %>% slice(792))
 
 type_1 <- unique(fs$Type.1)
 
+team_user <- c()
 team_comp <- fs %>% slice(sample(1:181, size=6))
 
-ui <- fluidPage(
+ui <- navbarPage(
+  title="Pokemon Battle Simulator",
+  id="pages",
   tags$head(
     tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
   ),
   shinyjs::useShinyjs(),
+  tabPanel(title="Select Team",
   fluidRow(
     column(4,  
         fluidRow(column(6, 
@@ -111,7 +115,20 @@ ui <- fluidPage(
            
     )),
     fluidRow(column(6, htmlOutput("value")))
-)
+  ),
+  tabPanel(title="Battle", id="battle_panel", 
+           fluidRow(column(3, offset = 2, 
+                    htmlOutput("user_team") %>% 
+                      tagAppendAttributes(class = 'pokemon_stats')),
+                    column(2,
+                           actionButton("start_battle", label = "Begin") %>% 
+                             tagAppendAttributes(class = 'begin_btn')),
+                    column(4,
+                    htmlOutput("comp_team") %>% 
+                      tagAppendAttributes(class = 'pokemon_stats'))
+           ),
+           fluidRow(column(6, offset = 2, htmlOutput("battle_results")))
+))
 
 ################################################################################
 server <- function(input, output, session) {
@@ -245,20 +262,82 @@ server <- function(input, output, session) {
   })
   
   observe({
-       # toggleState("to_battle", condition = input$pokemon6 == 'Select')
+    
     if (input$pokemon1 == 'Select' || input$pokemon2 == 'Select' ||
         input$pokemon3 == 'Select' || input$pokemon4 == 'Select' ||
         input$pokemon5 == 'Select' || input$pokemon6 == 'Select') {
-     shinyjs::disable("to_battle")
+      shinyjs::disable("to_battle")
+      shinyjs::disable(selector = 'a[data-value="Battle"')
     } else {
       shinyjs::enable("to_battle")
+      shinyjs::enable(selector = 'a[data-value="Battle"')
+      team_user <- fs %>% filter(Name == input$pokemon1)
+      team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon2))
+      team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon3))
+      team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon4))
+      team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon5))
+      team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon6))
+      output$user_team <- renderUI({
+        HTML(paste0("<h3>User's Team</h3>",input$pokemon1,"<br>",
+               input$pokemon2,"<br>",input$pokemon3,"<br>",
+               input$pokemon4,"<br>",input$pokemon5,"<br>",input$pokemon6))
+      })
+      output$comp_team <- renderUI({
+        HTML(paste0("<h3>Computer's Team</h3>",team_comp$Name[1],"<br>",
+               team_comp$Name[2],"<br>",team_comp$Name[3],"<br>",
+               team_comp$Name[4],"<br>",team_comp$Name[5],"<br>",
+               team_comp$Name[6]))
+      })
     }
   })
   
-  output$value <- renderUI({ 
-      input$to_battle
-    })
+  observeEvent(input$to_battle, {
+    updateTabsetPanel(session, "pages",
+                      selected = "Battle"
+    )
+  })
   
+  ######################################################
+  ### Battle Page
+  ######################################################
+  speed_test <- function() {
+    
+    if (team_user[1,"Speed"] > team_comp[1,"Speed"]) {
+      battle("user", 1, team_user, "comp", 1, team_comp)
+    } else {
+      battle("comp", 1, team_comp, "user", 1, team_user)
+    }
+    
+  }
+  
+  battle <- function(atk_name,atk_poke,atk_team,def_name,def_poke,def_team) {
+    attack_modifier <- types %>%
+      filter(Attacking == atk_team$Type.1[atk_poke]) %>%
+      pull(def_team$Type.1[def_poke])
+    
+    remaining_def <- def_team$Defense[def_poke] -
+      atk_team$Attack[atk_poke] * attack_modifier
+    
+    if (remaining_def <= 0) {
+      cat(atk_team$Name[atk_poke],
+          " beats ", def_team$Name[def_poke], "\n")
+      def_poke <- def_poke + 1
+      if (def_poke > 6) {
+        return(atk_name)
+      }
+    } else {
+      def_team$Defense[def_poke] <- remaining_def
+    }
+    
+    battle(def_name,def_poke,def_team,atk_name,atk_poke,atk_team)
+    
+  }
+  
+  observeEvent(input$start_battle, {
+    output$start_battle <- renderUI({
+      HTML("hello") #speed_test())
+    })
+  })
 }
 
 # Run the application 
