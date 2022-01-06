@@ -14,8 +14,10 @@ fs <- rbind(fs, data %>% slice(792))
 
 type_1 <- unique(fs$Type.1)
 
-team_user <- c()
+# commented out for test
+# team_user <- fs %>% slice(sample(1:181, size=6))
 team_comp <- fs %>% slice(sample(1:181, size=6))
+team_user1 <- tibble()
 
 ui <- navbarPage(
   title="Pokemon Battle Simulator",
@@ -127,7 +129,8 @@ ui <- navbarPage(
                     htmlOutput("comp_team") %>% 
                       tagAppendAttributes(class = 'pokemon_stats'))
            ),
-           fluidRow(column(6, offset = 2, htmlOutput("battle_results")))
+           fluidRow(column(6, offset = 3, htmlOutput("battle_results") %>% 
+                             tagAppendAttributes(class = 'pokemon_stats')))
 ))
 
 ################################################################################
@@ -267,20 +270,22 @@ server <- function(input, output, session) {
         input$pokemon3 == 'Select' || input$pokemon4 == 'Select' ||
         input$pokemon5 == 'Select' || input$pokemon6 == 'Select') {
       shinyjs::disable("to_battle")
+      # comment out for test
       shinyjs::disable(selector = 'a[data-value="Battle"')
     } else {
       shinyjs::enable("to_battle")
       shinyjs::enable(selector = 'a[data-value="Battle"')
-      team_user <- fs %>% filter(Name == input$pokemon1)
+      team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon1))
       team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon2))
       team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon3))
       team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon4))
       team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon5))
       team_user <- rbind(team_user, fs %>% filter(Name == input$pokemon6))
       output$user_team <- renderUI({
-        HTML(paste0("<h3>User's Team</h3>",input$pokemon1,"<br>",
-               input$pokemon2,"<br>",input$pokemon3,"<br>",
-               input$pokemon4,"<br>",input$pokemon5,"<br>",input$pokemon6))
+        HTML(paste0("<h3>User's Team</h3>",team_user$Name[1],"<br>",
+                    team_user$Name[2],"<br>",team_user$Name[3],"<br>",
+                    team_user$Name[4],"<br>",team_user$Name[5],"<br>",
+                    team_user$Name[6]))
       })
       output$comp_team <- renderUI({
         HTML(paste0("<h3>Computer's Team</h3>",team_comp$Name[1],"<br>",
@@ -288,6 +293,7 @@ server <- function(input, output, session) {
                team_comp$Name[4],"<br>",team_comp$Name[5],"<br>",
                team_comp$Name[6]))
       })
+      team_user1 <- team_user
     }
   })
   
@@ -302,15 +308,16 @@ server <- function(input, output, session) {
   ######################################################
   speed_test <- function() {
     
-    if (team_user[1,"Speed"] > team_comp[1,"Speed"]) {
-      battle("user", 1, team_user, "comp", 1, team_comp)
+    if (team_user1$Speed[1] > team_comp$Speed[1]) {
+      battle("","user", 1, team_user1, "comp", 1, team_comp)
     } else {
-      battle("comp", 1, team_comp, "user", 1, team_user)
+      battle("","comp", 1, team_comp, "user", 1, team_user1)
     }
     
   }
   
-  battle <- function(atk_name,atk_poke,atk_team,def_name,def_poke,def_team) {
+  battle <- function(results_str,atk_name,atk_poke,atk_team,
+                     def_name,def_poke,def_team) {
     attack_modifier <- types %>%
       filter(Attacking == atk_team$Type.1[atk_poke]) %>%
       pull(def_team$Type.1[def_poke])
@@ -319,23 +326,32 @@ server <- function(input, output, session) {
       atk_team$Attack[atk_poke] * attack_modifier
     
     if (remaining_def <= 0) {
-      cat(atk_team$Name[atk_poke],
-          " beats ", def_team$Name[def_poke], "\n")
+      results_str <- paste0(results_str, atk_team$Name[atk_poke],
+          " beats ", def_team$Name[def_poke], "<br>")
       def_poke <- def_poke + 1
       if (def_poke > 6) {
-        return(atk_name)
+        if (atk_name == "user") {
+          team_comp <- fs %>% slice(sample(1:181, size=6))
+          output$comp_team <- renderUI({
+            HTML(paste0("<h3>Computer's Team</h3>",team_comp$Name[1],"<br>",
+                        team_comp$Name[2],"<br>",team_comp$Name[3],"<br>",
+                        team_comp$Name[4],"<br>",team_comp$Name[5],"<br>",
+                        team_comp$Name[6]))
+          })
+        }
+        return(paste0("<h3>",atk_name, " wins!</h3>",results_str))
       }
     } else {
       def_team$Defense[def_poke] <- remaining_def
     }
     
-    battle(def_name,def_poke,def_team,atk_name,atk_poke,atk_team)
+    battle(results_str,def_name,def_poke,def_team,atk_name,atk_poke,atk_team)
     
   }
   
   observeEvent(input$start_battle, {
-    output$start_battle <- renderUI({
-      HTML("hello") #speed_test())
+    output$battle_results <- renderUI({
+      HTML(speed_test())
     })
   })
 }
